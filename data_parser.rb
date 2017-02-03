@@ -1,11 +1,15 @@
+#!/usr/bin/env ruby
 require 'csv'
+
+file_name = ARGV[0]
+
 class Delivery
 
   attr_accessor :pilot, :destination, :what_got_shipped, :number_of_crates, :money_we_made
 
-  def initialize(destination:, what_got_shipped:, number_of_crates:, money_we_made:)
-    @destination      = destination.to_s
-    @what_got_shipped = what_got_shipped.to_s
+  def initialize( destination:, what_got_shipped:, number_of_crates:, money_we_made: )
+    @destination      = destination
+    @what_got_shipped = what_got_shipped
     @number_of_crates = number_of_crates.to_i
     @money_we_made    = money_we_made.to_i
     @pilot            = setPilot
@@ -22,36 +26,52 @@ class Delivery
 
 end
 
-daily_income, deliveries = [], []
+class Parse
 
-CSV.foreach("planet_express_logs.csv", headers: true, header_converters: :symbol) do |row|
-  delivery = Delivery.new(row)
-  puts delivery.inspect
-  deliveries << delivery
+  def parse_data( file_name )
+    deliveries = []
+    CSV.foreach(file_name, headers: true, header_converters: :symbol) do |row|
+      delivery = Delivery.new( row )
+      deliveries << delivery
+    end
+    deliveries
+  end
+
+  def self.get_profits( symbol, target, deliveries )
+    shipments = deliveries.select { |delivery| delivery.send(symbol) == target }
+    shipments.collect{ |delivery| delivery.money_we_made }.inject(0){ |sum,item| sum + item }
+  end
+
+  def self.weekly_income( deliveries )
+    daily_income = []
+    deliveries.collect{ |delivery| daily_income << delivery.money_we_made }
+    daily_income.inject(0){ |sum,item| sum + item }
+  end
+
+  def self.pilots( deliveries )
+    deliveries.flat_map{ |delivery| delivery.pilot }.uniq
+  end
+
+  def self.destinations( deliveries )
+    deliveries.flat_map{ |delivery| delivery.destination }.uniq
+  end
+
+  def self.profit_by_pilots( pilots, deliveries )
+    self.pilots( deliveries ).collect { |pilot| { pilot: pilot, profits: self.get_profits(:pilot, pilot, deliveries) } }
+  end
+
+  def self.profit_by_planets( destinations, deliveries )
+    self.destinations( deliveries ).collect { |destination| { destination: destination, profits: self.get_profits(:destination, destination, deliveries) } }
+  end
+
 end
 
-deliveries.each{ |delivery| daily_income << delivery.money_we_made}
+deliveries = Parse.new.parse_data(file_name)
 
-def get_pilot_profits(pilot, deliveries)
-  shipments = deliveries.select { |delivery| delivery.pilot.include? pilot }
-  shipments.collect{|delivery| delivery.money_we_made}.inject(0){|sum,item| sum + item}
-end
+puts Parse.weekly_income( deliveries )
 
-def get_planet_profits(destination, deliveries)
-  shipments = deliveries.select { |delivery| delivery.destination.include? destination }
-  shipments.collect{|delivery| delivery.money_we_made}.inject(0){|sum,item| sum + item}
-end
-pilots = deliveries.flat_map{|delivery| delivery.pilot}.uniq
-destinations = deliveries.flat_map{|delivery| delivery.destination}.uniq
+Parse.pilots( deliveries ).each { |pilot| puts "#{ pilot }'s trips are: #{ deliveries.count{ |delivery| delivery.pilot == pilot } }" }
 
-profit_by_pilots = pilots.collect { |pilot| {pilot: pilot, profits: get_pilot_profits(pilot, deliveries)}}
+Parse.profit_by_pilots( Parse.pilots( deliveries ), deliveries ).each { |profit_by_pilot| puts "#{ profit_by_pilot[:pilot] }'s bonus is: #{ profit_by_pilot[:profits]*0.1 }" }
 
-profit_by_planets = destinations.collect { |destination| {destination: destination, profits: get_planet_profits(destination, deliveries)}}
-
-weekly_income = daily_income.inject(0){|sum,item| sum + item}
-
-pilots.each { |pilot| puts "#{pilot}'s trips are: #{deliveries.count{|delivery| delivery.pilot == pilot}}" }
-
-profit_by_pilots.each { |profit_by_pilot| puts "#{profit_by_pilot[:pilot]}'s bonus is: #{profit_by_pilot[:profits]*0.1}" }
-
-profit_by_planets.each { |profit_by_planet| puts "#{profit_by_planet[:destination]}'s profits were: #{profit_by_planet[:profits]}" }
+Parse.profit_by_planets( Parse.destinations( deliveries ), deliveries ).each { |profit_by_planet| puts "#{ profit_by_planet[:destination] }'s profits were: #{ profit_by_planet[:profits] } " }
