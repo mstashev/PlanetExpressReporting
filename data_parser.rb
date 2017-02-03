@@ -17,10 +17,10 @@ class Delivery
 
   def setPilot
     case destination
-    when "Earth" then @pilot = "Fry"
-    when "Mars" then @pilot = "Amy"
+    when "Earth"  then @pilot = "Fry"
+    when "Mars"   then @pilot = "Amy"
     when "Uranus" then @pilot = "Bender"
-    else @pilot = "Leela"
+    else @pilot   = "Leela"
     end
   end
 
@@ -69,9 +69,9 @@ end
 deliveries = Parse.new.parse_data(file_name)
 
 puts Parse.weekly_income( deliveries )
+pilots = Parse.pilots( deliveries )
+pilots.each { |pilot| puts "#{ pilot }'s trips are: #{ deliveries.count{ |delivery| delivery.pilot == pilot } }" }
+destinations = Parse.destinations( deliveries )
+Parse.profit_by_pilots( pilots, deliveries ).each { |profit_by_pilot| puts "#{ profit_by_pilot[:pilot] }'s bonus is: #{ profit_by_pilot[:profits]*0.1 }" }
 
-Parse.pilots( deliveries ).each { |pilot| puts "#{ pilot }'s trips are: #{ deliveries.count{ |delivery| delivery.pilot == pilot } }" }
-
-Parse.profit_by_pilots( Parse.pilots( deliveries ), deliveries ).each { |profit_by_pilot| puts "#{ profit_by_pilot[:pilot] }'s bonus is: #{ profit_by_pilot[:profits]*0.1 }" }
-
-Parse.profit_by_planets( Parse.destinations( deliveries ), deliveries ).each { |profit_by_planet| puts "#{ profit_by_planet[:destination] }'s profits were: #{ profit_by_planet[:profits] } " }
+Parse.profit_by_planets( destinations, deliveries ).each { |profit_by_planet| puts "#{ profit_by_planet[:destination] }'s profits were: #{ profit_by_planet[:profits] } " }
